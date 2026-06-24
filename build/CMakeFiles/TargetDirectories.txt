@@ -1,5 +1,0 @@
-/home/testrig/Documents/TestStation/build/CMakeFiles/TestRigControl.dir
-/home/testrig/Documents/TestStation/build/CMakeFiles/edit_cache.dir
-/home/testrig/Documents/TestStation/build/CMakeFiles/rebuild_cache.dir
-/home/testrig/Documents/TestStation/build/CMakeFiles/TestRigControl_autogen_timestamp_deps.dir
-/home/testrig/Documents/TestStation/build/CMakeFiles/TestRigControl_autogen.dir
