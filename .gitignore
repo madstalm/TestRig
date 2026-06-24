@@ -1,0 +1,29 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Qt / moc / ui generated files
+*.moc
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+
+# Executables
+*.exe
+*.out
+*.app
+
+# IDEs
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
