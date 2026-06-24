@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_TestRigControl_FILE /home/testrig/Documents/TestStation/build/TestRigControl)
+set(__QT_DEPLOY_TARGET_TestRigControl_TYPE EXECUTABLE)
