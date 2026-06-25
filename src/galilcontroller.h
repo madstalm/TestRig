@@ -9,6 +9,9 @@ public:
     GalilController();
     ~GalilController();
 
+    // Conversion constant: 200 full steps/rev × 256 microsteps × (1 rev / 2 mm lead)
+    static constexpr double MICROSTEPS_PER_MM = 25600.0;
+
     // Connection
     bool connect(const QString &address);
     void disconnect();
@@ -18,21 +21,21 @@ public:
     bool enableMotor();
     bool disableMotor();
 
-    // Motion parameters (units: steps/s and steps/s²)
-    bool setSpeed(int stepsPerSec);
-    bool setAcceleration(int stepsPerSecSq);
-    bool setDeceleration(int stepsPerSecSq);
+    // Motion parameters (units: mm/s and mm/s²)
+    bool setSpeed(double mmPerSec);
+    bool setAcceleration(double mmPerSecSq);
+    bool setDeceleration(double mmPerSecSq);
 
     // Motion commands — all return false on gclib error
-    bool moveRelative(long steps);
-    bool moveAbsolute(long position);
+    bool moveRelative(double mm);
+    bool moveAbsolute(double mm);
     bool stop();           // decelerated stop
     bool abort();          // immediate stop (use for E-stop)
     bool home();           // searches for home input, then limits
     bool definePositionZero(); // set current position as 0
 
     // State queries — return sensible defaults if not connected
-    long   getPosition();
+    double getPosition();  // returns mm
     bool   isMoving();
     bool   isForwardLimitActive();
     bool   isReverseLimitActive();

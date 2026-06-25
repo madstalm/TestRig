@@ -86,16 +86,16 @@ void MainWindow::onEnableMotorClicked()
 
 void MainWindow::onApplyParametersClicked()
 {
-    int speed = ui->speedSpin->value();
-    int accel = ui->accelSpin->value();
-    int decel = ui->decelSpin->value();
+    double speed = ui->speedSpin->value();
+    double accel = ui->accelSpin->value();
+    double decel = ui->decelSpin->value();
 
     bool ok = m_galil.setSpeed(speed)
            && m_galil.setAcceleration(accel)
            && m_galil.setDeceleration(decel);
 
     if (ok)
-        log(QString("Parameters set: speed=%1 steps/s, accel=%2 steps/s², decel=%3 steps/s²")
+        log(QString("Parameters set: speed=%1 mm/s, accel=%2 mm/s², decel=%3 mm/s²")
                 .arg(speed).arg(accel).arg(decel));
     else
         log("Error setting parameters: " + m_galil.getLastError());
@@ -107,20 +107,20 @@ void MainWindow::onApplyParametersClicked()
 
 void MainWindow::onJogNegClicked()
 {
-    long steps = -static_cast<long>(ui->stepSizeSpin->value());
-    if (!m_galil.moveRelative(steps))
+    double mm = -ui->stepSizeSpin->value();
+    if (!m_galil.moveRelative(mm))
         log("Jog error: " + m_galil.getLastError());
     else
-        log(QString("Jogging %1 steps.").arg(steps));
+        log(QString("Jogging %1 mm.").arg(mm));
 }
 
 void MainWindow::onJogPosClicked()
 {
-    long steps = static_cast<long>(ui->stepSizeSpin->value());
-    if (!m_galil.moveRelative(steps))
+    double mm = ui->stepSizeSpin->value();
+    if (!m_galil.moveRelative(mm))
         log("Jog error: " + m_galil.getLastError());
     else
-        log(QString("Jogging +%1 steps.").arg(steps));
+        log(QString("Jogging +%1 mm.").arg(mm));
 }
 
 void MainWindow::onStopClicked()
@@ -133,11 +133,11 @@ void MainWindow::onStopClicked()
 
 void MainWindow::onMoveAbsClicked()
 {
-    long target = static_cast<long>(ui->targetPosSpin->value());
+    double target = ui->targetPosSpin->value();
     if (!m_galil.moveAbsolute(target))
         log("Move error: " + m_galil.getLastError());
     else
-        log(QString("Moving to absolute position %1.").arg(target));
+        log(QString("Moving to absolute position %1 mm.").arg(target));
 }
 
 void MainWindow::onHomeClicked()
@@ -162,9 +162,9 @@ void MainWindow::onZeroHereClicked()
 
 void MainWindow::pollStatus()
 {
-    // Position
-    long pos = m_galil.getPosition();
-    ui->positionLabel->setText(QString::number(pos));
+    // Position in mm, 3 decimal places (= ~0.04 µm resolution at 256 µstep)
+    double pos = m_galil.getPosition();
+    ui->positionLabel->setText(QString::number(pos, 'f', 3));
 
     // Motion busy
     bool moving = m_galil.isMoving();
@@ -177,7 +177,6 @@ void MainWindow::pollStatus()
     ui->fwdLimitLabel->setText(fwd ? "ACTIVE" : "OK");
     ui->revLimitLabel->setText(rev ? "ACTIVE" : "OK");
 
-    // Style limit labels red when tripped
     ui->fwdLimitLabel->setStyleSheet(fwd ? "color: red; font-weight: bold;" : "");
     ui->revLimitLabel->setStyleSheet(rev ? "color: red; font-weight: bold;" : "");
 
@@ -194,8 +193,6 @@ void MainWindow::setConnectedState(bool connected)
 {
     ui->connectBtn->setText(connected ? "Disconnect" : "Connect");
     ui->ipEdit->setEnabled(!connected);
-
-    // Disable all axis controls when not connected
     ui->axisGroup->setEnabled(connected);
 }
 

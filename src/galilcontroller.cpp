@@ -87,7 +87,6 @@ bool GalilController::sendCommand(const QString &cmd, QString *response)
 double GalilController::queryValue(const QString &mgExpression)
 {
     QString resp;
-    // "MG " + expression causes the controller to print the numeric result
     if (!sendCommand("MG " + mgExpression, &resp))
         return 0.0;
     return resp.toDouble();
@@ -99,22 +98,17 @@ double GalilController::queryValue(const QString &mgExpression)
 
 bool GalilController::enableMotor()
 {
-    // SH = Servo Here: energises the motor and holds position
     return sendCommand("SHA");
 }
 
 bool GalilController::disableMotor()
 {
-    // MO = Motor Off: de-energises the motor
     return sendCommand("MOA");
 }
 
 bool GalilController::isMotorEnabled()
 {
-    // _MOA returns 0 if the motor is OFF, 1 if it is on
-    // Invert: MO bit = 1 means off, so we negate
     double val = queryValue("_MOA");
-    // _MOA == 0 → motor ON; _MOA == 1 → motor OFF
     return (val == 0.0);
 }
 
@@ -122,62 +116,59 @@ bool GalilController::isMotorEnabled()
 // Motion parameters
 // ---------------------------------------------------------------------------
 
-bool GalilController::setSpeed(int stepsPerSec)
+bool GalilController::setSpeed(double mmPerSec)
 {
-    return sendCommand(QString("SPA=%1").arg(stepsPerSec));
+    long microsteps = static_cast<long>(mmPerSec * MICROSTEPS_PER_MM);
+    return sendCommand(QString("SPA=%1").arg(microsteps));
 }
 
-bool GalilController::setAcceleration(int stepsPerSecSq)
+bool GalilController::setAcceleration(double mmPerSecSq)
 {
-    return sendCommand(QString("ACA=%1").arg(stepsPerSecSq));
+    long microsteps = static_cast<long>(mmPerSecSq * MICROSTEPS_PER_MM);
+    return sendCommand(QString("ACA=%1").arg(microsteps));
 }
 
-bool GalilController::setDeceleration(int stepsPerSecSq)
+bool GalilController::setDeceleration(double mmPerSecSq)
 {
-    return sendCommand(QString("DCA=%1").arg(stepsPerSecSq));
+    long microsteps = static_cast<long>(mmPerSecSq * MICROSTEPS_PER_MM);
+    return sendCommand(QString("DCA=%1").arg(microsteps));
 }
 
 // ---------------------------------------------------------------------------
 // Motion commands
 // ---------------------------------------------------------------------------
 
-bool GalilController::moveRelative(long steps)
+bool GalilController::moveRelative(double mm)
 {
-    // PR sets the relative distance; BG starts motion
-    if (!sendCommand(QString("PRA=%1").arg(steps))) return false;
+    long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
+    if (!sendCommand(QString("PRA=%1").arg(microsteps))) return false;
     return sendCommand("BGA");
 }
 
-bool GalilController::moveAbsolute(long position)
+bool GalilController::moveAbsolute(double mm)
 {
-    // PA sets an absolute target; BG starts motion
-    if (!sendCommand(QString("PAA=%1").arg(position))) return false;
+    long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
+    if (!sendCommand(QString("PAA=%1").arg(microsteps))) return false;
     return sendCommand("BGA");
 }
 
 bool GalilController::stop()
 {
-    // ST decelerates to a stop using the configured deceleration ramp
     return sendCommand("STA");
 }
 
 bool GalilController::abort()
 {
-    // AB halts all motion immediately with no deceleration
     return sendCommand("AB");
 }
 
 bool GalilController::home()
 {
-    // FI = Find Index (uses the home input on axis A).
-    // If no home switch is wired, use HM instead, which searches limits.
-    // Change to "HM A" and "BG A" if you use the home input differently.
     return sendCommand("HMA") && sendCommand("BGA");
 }
 
 bool GalilController::definePositionZero()
 {
-    // DP = Define Position: tells the controller the current position is 0
     return sendCommand("DPA=0");
 }
 
@@ -185,28 +176,24 @@ bool GalilController::definePositionZero()
 // State queries
 // ---------------------------------------------------------------------------
 
-long GalilController::getPosition()
+double GalilController::getPosition()
 {
-    // _TPA = Tell Position of Axis A
-    return static_cast<long>(queryValue("_TPA"));
+    // Convert microsteps back to mm
+    return queryValue("_TPA") / MICROSTEPS_PER_MM;
 }
 
 bool GalilController::isMoving()
 {
-    // _BGA = Busy flag for Axis A; 1 = moving, 0 = stopped
     return (queryValue("_BGA") != 0.0);
 }
 
 bool GalilController::isForwardLimitActive()
 {
-    // _LFA = Forward Limit input state for Axis A
-    // On Galil, 0 = limit switch is ACTIVE (tripped), 1 = not active.
-    // We return true when the limit is tripped, i.e. _LFA == 0.
     return (queryValue("_LFA") == 0.0);
 }
 
 bool GalilController::isReverseLimitActive()
 {
-    // _LRA = Reverse Limit input state for Axis A
     return (queryValue("_LRA") == 0.0);
 }
+
