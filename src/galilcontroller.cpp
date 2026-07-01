@@ -112,6 +112,13 @@ bool GalilController::isMotorEnabled()
     return (val == 0.0);
 }
 
+void GalilController::ensureMotorEnabled()
+{
+    if (!isMotorEnabled()) {
+        enableMotor();
+    }    
+}
+
 // ---------------------------------------------------------------------------
 // Motion parameters
 // ---------------------------------------------------------------------------
@@ -140,6 +147,7 @@ bool GalilController::setDeceleration(double mmPerSecSq)
 
 bool GalilController::moveRelative(double mm)
 {
+    ensureMotorEnabled();
     long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
     if (!sendCommand(QString("PRA=%1").arg(microsteps))) return false;
     return sendCommand("BGA");
@@ -147,6 +155,7 @@ bool GalilController::moveRelative(double mm)
 
 bool GalilController::moveAbsolute(double mm)
 {
+    ensureMotorEnabled();
     long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
     if (!sendCommand(QString("PAA=%1").arg(microsteps))) return false;
     return sendCommand("BGA");
@@ -164,6 +173,7 @@ bool GalilController::abort()
 
 bool GalilController::home()
 {
+    ensureMotorEnabled();
     return sendCommand("HMA") && sendCommand("BGA");
 }
 

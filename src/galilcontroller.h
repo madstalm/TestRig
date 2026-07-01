@@ -20,6 +20,7 @@ public:
     // Motor enable / disable
     bool enableMotor();
     bool disableMotor();
+    void ensureMotorEnabled();
 
     // Motion parameters (units: mm/s and mm/s²)
     bool setSpeed(double mmPerSec);
