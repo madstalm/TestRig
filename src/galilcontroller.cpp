@@ -84,11 +84,14 @@ bool GalilController::sendCommand(const QString &cmd, QString *response)
     return true;
 }
 
-double GalilController::queryValue(const QString &mgExpression)
+double GalilController::queryValue(const QString &mgExpression, bool *ok)
 {
     QString resp;
-    if (!sendCommand("MG " + mgExpression, &resp))
+    if (!sendCommand("MG " + mgExpression, &resp)) {
+        if (ok) *ok = false;
         return 0.0;
+    }
+    if (ok) *ok = true;
     return resp.toDouble();
 }
 
@@ -108,7 +111,10 @@ bool GalilController::disableMotor()
 
 bool GalilController::isMotorEnabled()
 {
-    double val = queryValue("_MOA");
+    bool ok = false;
+    double val = queryValue("_MOA", &ok);
+    if (!ok)
+        return false;   // failed query → assume not enabled (safer default)
     return (val == 0.0);
 }
 

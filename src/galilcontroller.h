@@ -50,8 +50,8 @@ private:
     bool sendCommand(const QString &cmd, QString *response = nullptr);
 
     // Send "MG <expr>" and parse the returned float.
-    // Returns 0.0 and sets m_lastError on failure.
-    double queryValue(const QString &mgExpression);
+    // Sets *ok = false (if provided) on failure; returns 0.0 in that case.
+    double queryValue(const QString &mgExpression, bool *ok = nullptr);
 
     GCon    m_handle;
     bool    m_connected;
