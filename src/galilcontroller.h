@@ -2,6 +2,14 @@
 
 #include <QString>
 #include <gclib.h>
+#include <map>
+
+enum class Axis {
+    X,
+    Y,
+    Z,
+    H,
+};
 
 class GalilController
 {
@@ -18,29 +26,29 @@ public:
     bool isConnected() const { return m_connected; }
 
     // Motor enable / disable
-    bool enableMotor();
-    bool disableMotor();
-    void ensureMotorEnabled();
+    bool enableMotor(Axis axis);
+    bool disableMotor(Axis axis);
+    void ensureMotorEnabled(Axis axis);
 
     // Motion parameters (units: mm/s and mm/s²)
-    bool setSpeed(double mmPerSec);
-    bool setAcceleration(double mmPerSecSq);
-    bool setDeceleration(double mmPerSecSq);
+    bool setSpeed(Axis axis, double mmPerSec);
+    bool setAcceleration(Axis axis, double mmPerSecSq);
+    bool setDeceleration(Axis axis, double mmPerSecSq);
 
     // Motion commands — all return false on gclib error
-    bool moveRelative(double mm);
-    bool moveAbsolute(double mm);
-    bool stop();           // decelerated stop
+    bool moveRelative(Axis axis, double mm);
+    bool moveAbsolute(Axis axis, double mm);
+    bool stop(Axis axis);           // decelerated stop
     bool abort();          // immediate stop (use for E-stop)
-    bool home();           // searches for home input, then limits
-    bool definePositionZero(); // set current position as 0
+    bool home(Axis axis);           // searches for home input, then limits
+    bool definePositionZero(Axis axis); // set current position as 0
 
     // State queries — return sensible defaults if not connected
-    double getPosition();  // returns mm
-    bool   isMoving();
-    bool   isForwardLimitActive();
-    bool   isReverseLimitActive();
-    bool   isMotorEnabled();
+    double getPosition(Axis axis);  // returns mm
+    bool   isMoving(Axis axis);
+    bool   isForwardLimitActive(Axis axis);
+    bool   isReverseLimitActive(Axis axis);
+    bool   isMotorEnabled(Axis axis);
 
     QString getLastError() const { return m_lastError; }
 
@@ -56,4 +64,7 @@ private:
     GCon    m_handle;
     bool    m_connected;
     QString m_lastError;
+
+    char connectorFor(Axis axis) const { return axisConnectorMap.at(axis); }
+    static const std::map<Axis, char> axisConnectorMap;
 };
