@@ -32,10 +32,14 @@ private slots:
     void onHomeClicked();
     void onZeroHereClicked();
 
+    // Axis polling
+    void onAxisSelectionChanged(int);
+
     // Polling timer
     void pollStatus();
 
 private:
+    Axis selectedAxis() const;
     void setConnectedState(bool connected);
     void log(const QString &message);
 

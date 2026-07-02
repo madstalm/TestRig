@@ -84,77 +84,103 @@ bool GalilController::sendCommand(const QString &cmd, QString *response)
     return true;
 }
 
-double GalilController::queryValue(const QString &mgExpression)
+double GalilController::queryValue(const QString &mgExpression, bool *ok)
 {
     QString resp;
-    if (!sendCommand("MG " + mgExpression, &resp))
+    if (!sendCommand("MG " + mgExpression, &resp)) {
+        if (ok) *ok = false;
         return 0.0;
+    }
+    if (ok) *ok = true;
     return resp.toDouble();
 }
+
+// ---------------------------------------------------------------------------
+// Axis -> Galil Connector map
+// ---------------------------------------------------------------------------
+
+const std::map<Axis, char> GalilController::axisConnectorMap = {
+    { Axis::X,        'A' },
+    { Axis::Y,        'B' },
+    { Axis::Z,        'C' },
+    { Axis::H,        'D' },
+};
 
 // ---------------------------------------------------------------------------
 // Motor enable / disable
 // ---------------------------------------------------------------------------
 
-bool GalilController::enableMotor()
+bool GalilController::enableMotor(Axis axis)
 {
-    return sendCommand("SHA");
+    return sendCommand(QString("SH") + connectorFor(axis));
 }
 
-bool GalilController::disableMotor()
+bool GalilController::disableMotor(Axis axis)
 {
-    return sendCommand("MOA");
+    return sendCommand(QString("MO") + connectorFor(axis));
 }
 
-bool GalilController::isMotorEnabled()
+bool GalilController::isMotorEnabled(Axis axis)
 {
-    double val = queryValue("_MOA");
-    return (val == 0.0);
+    bool ok = false;
+    double val = queryValue(QString("_MO") + connectorFor(axis), &ok);
+    if (!ok)
+        return false;   // failed query → assume not enabled (safer default)
+    return (val != 0.0);   // _MOA=1.0000 means motor is OFF for our axis, _MOA=0.0000 means motor is ON
+}
+
+void GalilController::ensureMotorEnabled(Axis axis)
+{
+    if (!isMotorEnabled(axis)) {
+        enableMotor(axis);
+    }    
 }
 
 // ---------------------------------------------------------------------------
 // Motion parameters
 // ---------------------------------------------------------------------------
 
-bool GalilController::setSpeed(double mmPerSec)
+bool GalilController::setSpeed(Axis axis, double mmPerSec)
 {
     long microsteps = static_cast<long>(mmPerSec * MICROSTEPS_PER_MM);
-    return sendCommand(QString("SPA=%1").arg(microsteps));
+    return sendCommand(QString("SP") + connectorFor(axis) + QString("=%1").arg(microsteps));
 }
 
-bool GalilController::setAcceleration(double mmPerSecSq)
+bool GalilController::setAcceleration(Axis axis, double mmPerSecSq)
 {
     long microsteps = static_cast<long>(mmPerSecSq * MICROSTEPS_PER_MM);
-    return sendCommand(QString("ACA=%1").arg(microsteps));
+    return sendCommand(QString("AC") + connectorFor(axis) + QString("=%1").arg(microsteps));
 }
 
-bool GalilController::setDeceleration(double mmPerSecSq)
+bool GalilController::setDeceleration(Axis axis, double mmPerSecSq)
 {
     long microsteps = static_cast<long>(mmPerSecSq * MICROSTEPS_PER_MM);
-    return sendCommand(QString("DCA=%1").arg(microsteps));
+    return sendCommand(QString("DC") + connectorFor(axis) + QString("=%1").arg(microsteps));
 }
 
 // ---------------------------------------------------------------------------
 // Motion commands
 // ---------------------------------------------------------------------------
 
-bool GalilController::moveRelative(double mm)
+bool GalilController::moveRelative(Axis axis, double mm)
 {
+    ensureMotorEnabled(axis);
     long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
-    if (!sendCommand(QString("PRA=%1").arg(microsteps))) return false;
-    return sendCommand("BGA");
+    if (!sendCommand(QString("PR") + connectorFor(axis) + QString("=%1").arg(microsteps))) return false;
+    return sendCommand(QString("BG") + connectorFor(axis));
 }
 
-bool GalilController::moveAbsolute(double mm)
+bool GalilController::moveAbsolute(Axis axis, double mm)
 {
+    ensureMotorEnabled(axis);
     long microsteps = static_cast<long>(mm * MICROSTEPS_PER_MM);
-    if (!sendCommand(QString("PAA=%1").arg(microsteps))) return false;
-    return sendCommand("BGA");
+    if (!sendCommand(QString("PA") + connectorFor(axis) + QString("=%1").arg(microsteps))) return false;
+    return sendCommand(QString("BG") + connectorFor(axis));
 }
 
-bool GalilController::stop()
+bool GalilController::stop(Axis axis)
 {
-    return sendCommand("STA");
+    return sendCommand(QString("ST") + connectorFor(axis));
 }
 
 bool GalilController::abort()
@@ -162,38 +188,39 @@ bool GalilController::abort()
     return sendCommand("AB");
 }
 
-bool GalilController::home()
+bool GalilController::home(Axis axis)
 {
-    return sendCommand("HMA") && sendCommand("BGA");
+    ensureMotorEnabled(axis);
+    return sendCommand(QString("HM") + connectorFor(axis)) && sendCommand(QString("BG") + connectorFor(axis));
 }
 
-bool GalilController::definePositionZero()
+bool GalilController::definePositionZero(Axis axis)
 {
-    return sendCommand("DPA=0");
+    return sendCommand(QString("DP") + connectorFor(axis) + QString("=0"));
 }
 
 // ---------------------------------------------------------------------------
 // State queries
 // ---------------------------------------------------------------------------
 
-double GalilController::getPosition()
+double GalilController::getPosition(Axis axis)
 {
     // Convert microsteps back to mm
-    return queryValue("_TPA") / MICROSTEPS_PER_MM;
+    return queryValue(QString("_TP") + connectorFor(axis)) / MICROSTEPS_PER_MM;
 }
 
-bool GalilController::isMoving()
+bool GalilController::isMoving(Axis axis)
 {
-    return (queryValue("_BGA") != 0.0);
+    return (queryValue(QString("_BG") + connectorFor(axis)) != 0.0);
 }
 
-bool GalilController::isForwardLimitActive()
+bool GalilController::isForwardLimitActive(Axis axis)
 {
-    return (queryValue("_LFA") == 0.0);
+    return (queryValue(QString("_LF") + connectorFor(axis)) == 0.0);
 }
 
-bool GalilController::isReverseLimitActive()
+bool GalilController::isReverseLimitActive(Axis axis)
 {
-    return (queryValue("_LRA") == 0.0);
+    return (queryValue(QString("_LR") + connectorFor(axis)) == 0.0);
 }
 

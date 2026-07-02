@@ -9,7 +9,7 @@ MainWindow::MainWindow(QWidget *parent)
     , m_pollTimer(new QTimer(this))
 {
     ui->setupUi(this);
-    setWindowTitle("Test Rig X-Axis Control");
+    setWindowTitle("Test Rig Axis Control");
 
     // Wire up buttons
     connect(ui->connectBtn,         &QPushButton::clicked, this, &MainWindow::onConnectClicked);
@@ -21,6 +21,13 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->moveAbsBtn,         &QPushButton::clicked, this, &MainWindow::onMoveAbsClicked);
     connect(ui->homeBtn,            &QPushButton::clicked, this, &MainWindow::onHomeClicked);
     connect(ui->zeroHereBtn,        &QPushButton::clicked, this, &MainWindow::onZeroHereClicked);
+    connect(ui->axisSelection,      QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::onAxisSelectionChanged);
+
+    ui->axisSelection->addItem("X-Axis", QVariant::fromValue(static_cast<int>(Axis::X)));
+    ui->axisSelection->addItem("Y-Axis", QVariant::fromValue(static_cast<int>(Axis::Y)));
+    ui->axisSelection->addItem("Z-Axis", QVariant::fromValue(static_cast<int>(Axis::Z)));
+    ui->axisSelection->addItem("Reservoir", QVariant::fromValue(static_cast<int>(Axis::H)));
 
     // Status polling every 200 ms
     connect(m_pollTimer, &QTimer::timeout, this, &MainWindow::pollStatus);
@@ -71,13 +78,15 @@ void MainWindow::onConnectClicked()
 
 void MainWindow::onEnableMotorClicked()
 {
-    if (m_galil.isMotorEnabled()) {
-        if (m_galil.disableMotor())
+    Axis axis = selectedAxis();
+
+    if (m_galil.isMotorEnabled(axis)) {
+        if (m_galil.disableMotor(axis))
             log("Motor disabled.");
         else
             log("Error disabling motor: " + m_galil.getLastError());
     } else {
-        if (m_galil.enableMotor())
+        if (m_galil.enableMotor(axis))
             log("Motor enabled.");
         else
             log("Error enabling motor: " + m_galil.getLastError());
@@ -86,13 +95,15 @@ void MainWindow::onEnableMotorClicked()
 
 void MainWindow::onApplyParametersClicked()
 {
+    Axis axis = selectedAxis();
+
     double speed = ui->speedSpin->value();
     double accel = ui->accelSpin->value();
     double decel = ui->decelSpin->value();
 
-    bool ok = m_galil.setSpeed(speed)
-           && m_galil.setAcceleration(accel)
-           && m_galil.setDeceleration(decel);
+    bool ok = m_galil.setSpeed(axis, speed)
+           && m_galil.setAcceleration(axis, accel)
+           && m_galil.setDeceleration(axis, decel);
 
     if (ok)
         log(QString("Parameters set: speed=%1 mm/s, accel=%2 mm/s², decel=%3 mm/s²")
@@ -107,8 +118,9 @@ void MainWindow::onApplyParametersClicked()
 
 void MainWindow::onJogNegClicked()
 {
+    Axis axis = selectedAxis();
     double mm = -ui->stepSizeSpin->value();
-    if (!m_galil.moveRelative(mm))
+    if (!m_galil.moveRelative(axis, mm))
         log("Jog error: " + m_galil.getLastError());
     else
         log(QString("Jogging %1 mm.").arg(mm));
@@ -116,8 +128,9 @@ void MainWindow::onJogNegClicked()
 
 void MainWindow::onJogPosClicked()
 {
+    Axis axis = selectedAxis();
     double mm = ui->stepSizeSpin->value();
-    if (!m_galil.moveRelative(mm))
+    if (!m_galil.moveRelative(axis, mm))
         log("Jog error: " + m_galil.getLastError());
     else
         log(QString("Jogging +%1 mm.").arg(mm));
@@ -125,7 +138,8 @@ void MainWindow::onJogPosClicked()
 
 void MainWindow::onStopClicked()
 {
-    if (!m_galil.stop())
+    Axis axis = selectedAxis();
+    if (!m_galil.stop(axis))
         log("Stop error: " + m_galil.getLastError());
     else
         log("Stop commanded.");
@@ -133,8 +147,9 @@ void MainWindow::onStopClicked()
 
 void MainWindow::onMoveAbsClicked()
 {
+    Axis axis = selectedAxis();
     double target = ui->targetPosSpin->value();
-    if (!m_galil.moveAbsolute(target))
+    if (!m_galil.moveAbsolute(axis, target))
         log("Move error: " + m_galil.getLastError());
     else
         log(QString("Moving to absolute position %1 mm.").arg(target));
@@ -142,7 +157,8 @@ void MainWindow::onMoveAbsClicked()
 
 void MainWindow::onHomeClicked()
 {
-    if (!m_galil.home())
+    Axis axis = selectedAxis();
+    if (!m_galil.home(axis))
         log("Home error: " + m_galil.getLastError());
     else
         log("Homing started.");
@@ -150,10 +166,24 @@ void MainWindow::onHomeClicked()
 
 void MainWindow::onZeroHereClicked()
 {
-    if (!m_galil.definePositionZero())
+    Axis axis = selectedAxis();
+    if (!m_galil.definePositionZero(axis))
         log("Zero error: " + m_galil.getLastError());
     else
         log("Current position defined as 0.");
+}
+
+// ---------------------------------------------------------------------------
+// Axis selection
+// ---------------------------------------------------------------------------
+
+void MainWindow::onAxisSelectionChanged(int /*index*/)
+{
+    // Refresh status immediately rather than waiting for the next poll tick,
+    // so the displayed position/limits/enable-state always match the
+    // currently selected axis without a visible delay.
+    if (m_galil.isConnected())
+        pollStatus();
 }
 
 // ---------------------------------------------------------------------------
@@ -162,17 +192,19 @@ void MainWindow::onZeroHereClicked()
 
 void MainWindow::pollStatus()
 {
+    Axis axis = selectedAxis();
+
     // Position in mm, 3 decimal places (= ~0.04 µm resolution at 256 µstep)
-    double pos = m_galil.getPosition();
+    double pos = m_galil.getPosition(axis);
     ui->positionLabel->setText(QString::number(pos, 'f', 3));
 
     // Motion busy
-    bool moving = m_galil.isMoving();
+    bool moving = m_galil.isMoving(axis);
     ui->motionStatusLabel->setText(moving ? "Moving" : "Idle");
 
     // Limit switches
-    bool fwd = m_galil.isForwardLimitActive();
-    bool rev = m_galil.isReverseLimitActive();
+    bool fwd = m_galil.isForwardLimitActive(axis);
+    bool rev = m_galil.isReverseLimitActive(axis);
 
     ui->fwdLimitLabel->setText(fwd ? "ACTIVE" : "OK");
     ui->revLimitLabel->setText(rev ? "ACTIVE" : "OK");
@@ -181,13 +213,18 @@ void MainWindow::pollStatus()
     ui->revLimitLabel->setStyleSheet(rev ? "color: red; font-weight: bold;" : "");
 
     // Motor enable button label
-    bool enabled = m_galil.isMotorEnabled();
+    bool enabled = m_galil.isMotorEnabled(axis);
     ui->enableMotorBtn->setText(enabled ? "Disable Motor" : "Enable Motor");
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+Axis MainWindow::selectedAxis() const
+{
+    return static_cast<Axis>(ui->axisSelection->currentData().toInt());
+}
 
 void MainWindow::setConnectedState(bool connected)
 {
