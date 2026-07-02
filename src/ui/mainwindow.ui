@@ -78,26 +78,6 @@
          </item>
          <item>
           <widget class="QComboBox" name="axisSelection">
-           <item>
-            <property name="text">
-             <string>X-Axis</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Y-Axis</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Z-Axis</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Reservoir</string>
-            </property>
-           </item>
           </widget>
          </item>
          <item>
