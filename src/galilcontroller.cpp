@@ -115,7 +115,7 @@ bool GalilController::isMotorEnabled()
     double val = queryValue("_MOA", &ok);
     if (!ok)
         return false;   // failed query → assume not enabled (safer default)
-    return (val == 0.0);
+    return (val != 0.0);   // _MOA=1.0000 means motor is OFF for our axis, _MOA=0.0000 means motor is ON
 }
 
 void GalilController::ensureMotorEnabled()
