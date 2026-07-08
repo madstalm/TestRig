@@ -25,10 +25,9 @@ That will open the GUI.
   
 ### Recommended Parameters for Testing the Axis
 We have found the following settings to work best for testing the motion of the axis:
-- Speed: ___ mm/s
-- Accel: ___ mm/s<sup>2</sup>
-- Decel: ___ mm/s<sup>2</sup>
-- Step size: ___ mm  
+- Speed: 15 mm/s
+- Accel: 40 mm/s<sup>2</sup>
+- Decel: 40 mm/s<sup>2</sup>
   
 **Direction:**
 - Negative/Reverse: stage moves towards stepper
