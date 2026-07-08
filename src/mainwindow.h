@@ -35,12 +35,17 @@ private slots:
     // Axis polling
     void onAxisSelectionChanged(int);
 
+    // Solenoid controls
+    void onSolenoidToggleToggled(bool checked);
+    void onSolenoidPulseClicked();
+
     // Polling timer
     void pollStatus();
 
 private:
     Axis selectedAxis() const;
     void setConnectedState(bool connected);
+    void setSolenoidState(bool open);
     void log(const QString &message);
 
     Ui::MainWindow *ui;

@@ -43,6 +43,9 @@ public:
     bool home(Axis axis);           // searches for home input, then limits
     bool definePositionZero(Axis axis); // set current position as 0
 
+    // Solenoid / air valve control on extended I/O bit 22
+    bool setSolenoidState(bool open);
+
     // State queries — return sensible defaults if not connected
     double getPosition(Axis axis);  // returns mm
     bool   isMoving(Axis axis);
@@ -64,6 +67,8 @@ private:
     GCon    m_handle;
     bool    m_connected;
     QString m_lastError;
+
+    static constexpr int SOLENOID_IO_BIT = 22;
 
     char connectorFor(Axis axis) const { return axisConnectorMap.at(axis); }
     static const std::map<Axis, char> axisConnectorMap;

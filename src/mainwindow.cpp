@@ -23,6 +23,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->zeroHereBtn,        &QPushButton::clicked, this, &MainWindow::onZeroHereClicked);
     connect(ui->axisSelection,      QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onAxisSelectionChanged);
+    connect(ui->solenoidToggle,     &QCheckBox::toggled, this, &MainWindow::onSolenoidToggleToggled);
+    connect(ui->solenoidPulseBtn,   &QPushButton::clicked, this, &MainWindow::onSolenoidPulseClicked);
 
     ui->axisSelection->addItem("X-Axis", QVariant::fromValue(static_cast<int>(Axis::X)));
     ui->axisSelection->addItem("Y-Axis", QVariant::fromValue(static_cast<int>(Axis::Y)));
@@ -65,6 +67,7 @@ void MainWindow::onConnectClicked()
     log(QString("Connecting to %1 ...").arg(address));
     if (m_galil.connect(address)) {
         setConnectedState(true);
+        setSolenoidState(false);
         m_pollTimer->start(200);
         log("Connected.");
     } else {
@@ -186,6 +189,30 @@ void MainWindow::onAxisSelectionChanged(int /*index*/)
         pollStatus();
 }
 
+void MainWindow::onSolenoidToggleToggled(bool checked)
+{
+    setSolenoidState(checked);
+}
+
+void MainWindow::onSolenoidPulseClicked()
+{
+    if (!m_galil.isConnected()) {
+        log("Solenoid pulse ignored: not connected.");
+        return;
+    }
+
+    if (!m_galil.setSolenoidState(true)) {
+        log("Pulse failed: " + m_galil.getLastError());
+        return;
+    }
+
+    ui->solenoidToggle->setChecked(true);
+    QTimer::singleShot(250, this, [this]() {
+        setSolenoidState(false);
+    });
+    log("Solenoid pulsed.");
+}
+
 // ---------------------------------------------------------------------------
 // Polling
 // ---------------------------------------------------------------------------
@@ -231,6 +258,28 @@ void MainWindow::setConnectedState(bool connected)
     ui->connectBtn->setText(connected ? "Disconnect" : "Connect");
     ui->ipEdit->setEnabled(!connected);
     ui->axisGroup->setEnabled(connected);
+    ui->solenoidGroup->setEnabled(connected);
+
+    if (!connected)
+        ui->solenoidToggle->setChecked(false);
+}
+
+void MainWindow::setSolenoidState(bool open)
+{
+    if (!m_galil.isConnected()) {
+        ui->solenoidToggle->setChecked(false);
+        return;
+    }
+
+    if (!m_galil.setSolenoidState(open)) {
+        log(QString("Solenoid %1 failed: %2")
+                .arg(open ? "open" : "close")
+                .arg(m_galil.getLastError()));
+        ui->solenoidToggle->setChecked(!open);
+        return;
+    }
+
+    ui->solenoidToggle->setChecked(open);
 }
 
 void MainWindow::log(const QString &message)

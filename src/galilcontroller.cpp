@@ -199,6 +199,20 @@ bool GalilController::definePositionZero(Axis axis)
     return sendCommand(QString("DP") + connectorFor(axis) + QString("=0"));
 }
 
+bool GalilController::setSolenoidState(bool open)
+{
+    if (!m_connected) {
+        m_lastError = "Not connected.";
+        return false;
+    }
+
+    const QString cmd = open
+        ? QString("SB %1").arg(SOLENOID_IO_BIT)
+        : QString("CB %1").arg(SOLENOID_IO_BIT);
+
+    return sendCommand(cmd);
+}
+
 // ---------------------------------------------------------------------------
 // State queries
 // ---------------------------------------------------------------------------
